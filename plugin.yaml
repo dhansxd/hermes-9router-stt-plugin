@@ -1,0 +1,5 @@
+name: 9router-stt
+version: 0.1.0
+description: "9Router speech-to-text backend. Transcription via a 9Router gateway."
+author: dhansxd
+kind: backend
