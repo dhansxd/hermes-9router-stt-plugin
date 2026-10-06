@@ -73,11 +73,12 @@ def _load_provider():
         if name.startswith("hermes_9router_stt"):
             del sys.modules[name]
     import hermes_9router_stt as mod
+    mod._load_settings = lambda: {}
 
     return mod, mod.NineRouterTranscriptionProvider()
 
 
-def main() -> int:
+def main(audio_path: str) -> int:
     src_path = Path(__file__).resolve().parent.parent / "src"
     sys.path.insert(0, str(src_path))
 
@@ -92,10 +93,10 @@ def main() -> int:
 
     real = _install_handler(ok_handler)
     mod, provider = _load_provider()
-    result = provider.transcribe("/tmp/stt_test.wav", model="gemini/gemini-3.8-flash")
+    result = provider.transcribe(audio_path, model="gemini/gemini-3.8-flash")
     assert result["success"] is True, result
     assert result["transcript"] == "nine router speech to text audit test"
-    assert result["provider"] == "9router"
+    assert result["provider"] == "9router-stt"
     assert result["model"] == "gemini/gemini-3.8-flash"
     post = [c for c in calls if c[0] == "POST"][0]
     assert post[1].endswith("/v1/audio/transcriptions")
@@ -117,7 +118,7 @@ def main() -> int:
         return _Resp({"text": "fallback transcript"})
 
     _install_handler(quota_handler)
-    result = provider.transcribe("/tmp/stt_test.wav", model="gemini/gemini-3.8-flash")
+    result = provider.transcribe(audio_path, model="gemini/gemini-3.8-flash")
     assert result["success"] is True, result
     assert result["transcript"] == "fallback transcript"
     assert result["model"] == "gemini/gemini-2.5-flash"
@@ -134,7 +135,7 @@ def main() -> int:
 
     _install_handler(auth_err_handler)
     mod, provider = _load_provider()
-    result = provider.transcribe("/tmp/stt_test.wav", model="a")
+    result = provider.transcribe(audio_path, model="a")
     assert result["success"] is False, result
     assert "Invalid API key" in result["error"]
 
@@ -144,7 +145,7 @@ def main() -> int:
 
     _install_handler(empty_catalog_handler)
     mod, provider = _load_provider()
-    result = provider.transcribe("/tmp/stt_test.wav")
+    result = provider.transcribe(audio_path)
     assert result["success"] is False, result
     assert "No STT model" in result["error"]
 
@@ -156,7 +157,7 @@ def main() -> int:
 
     _install_handler(empty_text_handler)
     mod, provider = _load_provider()
-    result = provider.transcribe("/tmp/stt_test.wav", model="a")
+    result = provider.transcribe(audio_path, model="a")
     assert result["success"] is False, result
     assert "empty transcription" in result["error"]
 
@@ -167,4 +168,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import tempfile
+    import wave
+    with tempfile.TemporaryDirectory() as tmp:
+        audio_path = str(Path(tmp) / "stt_test.wav")
+        with wave.open(audio_path, "wb") as audio:
+            audio.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            audio.writeframes(b"\0\0" * 160)
+        raise SystemExit(main(audio_path))
