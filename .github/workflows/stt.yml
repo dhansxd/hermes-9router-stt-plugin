@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      HERMES_HOME: ${{ runner.temp }}/stt-hermes-home
+      HERMES_HOME: ${{ github.workspace }}/.ci-hermes-home
       HERMES_DISABLE_LAZY_INSTALLS: "1"
       PYTHONPATH: ${{ github.workspace }}/hermes
     steps:
