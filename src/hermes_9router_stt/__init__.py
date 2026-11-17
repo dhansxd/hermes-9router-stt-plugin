@@ -76,6 +76,8 @@ def _is_quota_error(body: Any, status: int) -> bool:
     # 9Router 0.5.119 also labels ACL-denied HTTP 403 as insufficient_quota.
     # Its code alone is therefore not evidence of quota exhaustion on 403.
     if status == 403:
+        if "not allowed to use model" in message or "do not have permission" in message:
+            return False
         return "quota" in message or "rate limit" in message
     return ("quota" in message or "rate limit" in message
             or code in ("429", "rate_limit_exceeded", "insufficient_quota"))

@@ -54,7 +54,7 @@ Catalog results are cached for 300 seconds per active profile, gateway and crede
 
 ## Cloud regression checks
 
-The GitHub Actions workflow uses a standard `ubuntu-latest` runner and the unchanged official Hermes revision `ae2a81ccc00e9b7c06301523e5bb09608397149c` (v0.23.2), with its locked minimal Python 3.14 runtime. Checks compare the original plugin baseline, run transport/profile regressions with mocked network, and exercise the real Hermes plugin manager, native STT dispatcher and CLI install/enable/disable/update/remove in a disposable runner profile. No gateway secrets or paid provider calls are needed.
+Cloud verification targets the unchanged official Hermes revision `ae2a81ccc00e9b7c06301523e5bb09608397149c` (v0.23.2), with its locked minimal Python 3.14 runtime. The regression scripts compare the original plugin baseline, run transport/profile regressions with mocked network, and exercise the real Hermes plugin manager, native STT dispatcher and CLI install/enable/disable/update/remove in a disposable runner profile. No gateway secrets or paid provider calls are needed.
 
 This validates the pinned Hermes host and mocked 9Router 0.5.119 API contract. It does not establish transcription quality, real provider availability, or native execution on every OS.
 
