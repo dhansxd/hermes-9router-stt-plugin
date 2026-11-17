@@ -112,7 +112,7 @@ def main():
 
         cli("disable", "9router-stt")
         discover(False)
-        cli("enable", "9router-stt", "--yes-deps")
+        cli("enable", "9router-stt")
         discover(True)
         pinned = cli("update", "9router-stt", ok=False)
         assert pinned.returncode != 0 and "pinned" in pinned.stdout.lower(), pinned.stdout

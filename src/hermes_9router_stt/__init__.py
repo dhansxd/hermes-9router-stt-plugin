@@ -216,7 +216,7 @@ class NineRouterTranscriptionProvider(TranscriptionProvider):
             settings = _load_settings()
             base = _base_url(settings)
             api_key = _api_key()
-            timeout = float(settings.get("timeout", DEFAULT_TIMEOUT))
+            timeout = float(settings.get("timeout") or DEFAULT_TIMEOUT)
             if not math.isfinite(timeout) or timeout <= 0:
                 raise ValueError("timeout must be positive and finite")
             chain = self._model_chain(model, settings, api_key)
