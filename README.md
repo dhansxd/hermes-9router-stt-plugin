@@ -1,65 +1,62 @@
 # hermes-9router-stt-plugin
 
-Speech-to-text backend plugin for [Hermes Agent](https://hermes-agent.nousresearch.com) that routes STT through a [9Router](https://github.com/decolua/9router) gateway (OpenAI Whisper-compatible `/v1/audio/transcriptions`).
+Native speech-to-text backend for [Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins), using a [9Router](https://github.com/decolua/9router) gateway's OpenAI-compatible `/v1/audio/transcriptions` endpoint.
 
-Replaces the local STT backend (`stt.provider`) with any model your 9Router gateway exposes — Gemini 2.5/3.x Flash and more — with 429/quota-gated model fallback.
+## Install and configure
 
-## Install
-
-1. Install the complete repository; no manual symlinks are required:
+Use Hermes' plugin manager with the complete repository; no symlinks or core changes:
 
 ```bash
 hermes plugins install dhansxd/hermes-9router-stt-plugin --enable --yes-deps
 hermes plugins doctor 9router-stt --ci
 ```
 
-2. Add to `~/.hermes/config.yaml`:
+In the active Hermes profile's `config.yaml`:
 
 ```yaml
-plugins:
-  enabled:
-    - 9router-stt
-
 stt:
   enabled: true
   provider: 9router-stt
-  9router:
-    base_url: http://localhost:20128   # your 9Router gateway
-    model: gemini/gemini-2.5-flash     # primary STT model
-    fallback_models:                   # tried in order, ONLY on 429/quota errors
+  9router-stt:
+    base_url: http://localhost:20128
+    model: gemini/gemini-2.5-flash
+    fallback_models:
       - gemini/gemini-2.5-flash-lite
     timeout: 120
 ```
 
-3. Set the gateway key (if auth is enabled) in `~/.hermes/.env`:
+Use model IDs exposed by your gateway's `/v1/models/stt`. Omit `model` for automatic catalog selection. The legacy `stt.9router` settings remain supported; matching keys in `stt.9router-stt` take precedence.
 
-```
-NINEROUTER_KEY=your-9router-api-key
-```
+Set `NINEROUTER_KEY` in the active profile's `.env` if the gateway requires authentication. An auth-free local gateway needs no key. Optional `NINEROUTER_URL` and `NINEROUTER_STT_MODEL` also use Hermes' profile-scoped environment resolution.
 
-## Model selection
+## Lifecycle
 
-Priority: `model` argument → `stt.9router.model` → `NINEROUTER_STT_MODEL` env → first entry of `/v1/models/stt` catalog (TTL 300s).
-
-Fallback chain: `fallback_models` are tried in order when the active model returns a 429/quota error. Hard errors (auth, invalid request) return immediately.
-
-## Notes
-
-- Audio formats: whatever 9Router accepts (mp3, wav, m4a, webm, ogg, flac)
-- `language` hint passes through when set (`stt.9router.language`)
-- Cross-platform: pure Python (`requests`), no OS-specific code — macOS/Linux/Windows/Termux (point `base_url` at a reachable 9Router)
-
-## Regression checks
-
-Run with Hermes Python:
+Use [Hermes' official commands](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins):
 
 ```bash
-python test_registration.py
-python tests/test_provider.py
+hermes plugins disable 9router-stt
+hermes plugins enable 9router-stt
+hermes plugins update 9router-stt
+hermes plugins remove 9router-stt
 ```
 
-Tests create their own temporary WAV fixture and use mocked transport. A real
-Telegram voice note exercises automatic native inbound transcription.
+Disable/remove makes this backend unavailable; choose another `stt.provider` when you want to use STT without it. An install pinned with `--ref FULL_COMMIT_SHA` deliberately cannot update until reinstalled without the pin. Restart long-running Hermes processes after lifecycle changes as directed by Hermes.
+
+## Model and request behavior
+
+One primary is selected: argument → config → `NINEROUTER_STT_MODEL` → first catalog model. Only `fallback_models` are additional candidates, in order with duplicates removed.
+
+Fallback occurs on HTTP 429, including non-JSON responses, or a quota/rate-limit error. Authentication, ACL permission, invalid-request and redirect errors return immediately. In 9Router 0.5.119, HTTP 403 can be labeled `insufficient_quota` even for ACL denial; that code alone does not trigger fallback.
+
+Catalog results are cached for 300 seconds per active profile, gateway and credential identity; concurrent callers share the fetch. Discovery/registration never contact the gateway. Requests suppress ambient `.netrc` authentication and automatic redirects, while preserving standard proxy and CA environment support. Errors return status/category without upstream bodies, raw exceptions or credentials.
+
+`language` is optional and defaults to gateway auto-detection. Hermes vocabulary `prompt` hints pass through. Audio MIME types include mp3, mpga, mpeg, wav, m4a, mp4, webm, ogg, oga, opus, flac and aac; actual format/model support depends on 9Router and its provider. Hermes' native dispatcher validates and chunks uploads; direct provider callers remain responsible for file sizes because Requests buffers multipart uploads in memory.
+
+## Cloud regression checks
+
+The GitHub Actions workflow uses a standard `ubuntu-latest` runner and the unchanged official Hermes revision `ae2a81ccc00e9b7c06301523e5bb09608397149c` (v0.23.2), with its locked minimal Python 3.14 runtime. Checks compare the original plugin baseline, run transport/profile regressions with mocked network, and exercise the real Hermes plugin manager, native STT dispatcher and CLI install/enable/disable/update/remove in a disposable runner profile. No gateway secrets or paid provider calls are needed.
+
+This validates the pinned Hermes host and mocked 9Router 0.5.119 API contract. It does not establish transcription quality, real provider availability, or native execution on every OS.
 
 ## License
 
